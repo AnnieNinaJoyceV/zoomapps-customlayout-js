@@ -309,6 +309,123 @@ export async function drawQuadrant({ idx, ctx, text, participantId }) {
     };
 }
 
+function drawNameCard(ctx, x, y, width, height) {
+    ctx.save();
+    ctx.fillStyle = '#00000047';
+    ctx.fillRect(x, y, width, height);
+    ctx.restore();
+}
+
+function drawGradientText(ctx, text, x, y, maxWidth, height, padding = 12) {
+    const lineHeight = height - 2 * padding;
+    const newFont = 'Brush Script MT, cursive';
+
+    // ctx.save();
+    ctx.font = `${lineHeight}px ${newFont}`;
+    const tWidth = ctx.measureText(text).width;
+    var pos = { x: x + (maxWidth - tWidth) / 2, y: y + (height - lineHeight) };
+    ctx.fillStyle = '#FFF';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, pos.x, pos.y);
+    // ctx.restore();
+}
+
+function clipRoundRectTransparent(ctx, x, y, width, height, radius) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#FFF';
+
+    const region = getRoundRectPath(x, y, width, height, radius);
+
+    ctx.fill(region);
+    ctx.clip(region);
+    ctx.restore();
+}
+
+async function drawOneParticipant({ idx, ctx, participantId }) {
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+
+    let fill = ctx.createLinearGradient(0, 0, width, 0);
+    fill.addColorStop(0, '#ED4264');
+    fill.addColorStop(1, '#FFEDBC');
+    ctx.fillStyle = fill;
+
+    const quadrant = {
+        width: width,
+        height: height,
+    };
+
+    let x, y, w, h;
+    x = y = 0;
+
+    let qw = quadrant.width;
+    const padding = Math.max(quadrant.width, quadrant.height) / 100;
+    const doublePadding = padding * 2;
+
+    do {
+        w = qw;
+        h = (w * 9) / 16;
+        --qw;
+    } while (h + doublePadding > quadrant.height);
+
+    const radius = Math.min(qw, h) * 0.3;
+
+    let xPad = Math.floor(
+        Math.max(quadrant.width - (w + padding), doublePadding)
+    );
+    let yPad = Math.floor(
+        Math.max(quadrant.height - (h + padding), doublePadding)
+    );
+
+    x = width - quadrant.width;
+    xPad = padding;
+
+    const xPos = x + xPad;
+    const yPos = y + yPad;
+
+    // draws background
+    drawRect(ctx, 0, 0, quadrant.width, quadrant.height, fill);
+
+    // draws the actual video content from participant
+    clipRoundRectTransparent(
+        ctx,
+        xPos,
+        10,
+        width - 2 * xPos,
+        height - 20,
+        radius
+    );
+
+    const nameX = xPos + radius;
+    const nameY = height - 20 - 120;
+    const nameW = width - 2 * xPos - 2 * radius;
+    const nameH = 120;
+    // draw name card
+    drawNameCard(ctx, nameX, nameY, nameW, nameH);
+
+    // draw name
+    drawGradientText(ctx, 'Make it dynamic', nameX, nameY, nameW, nameH);
+
+    const imageData = ctx.getImageData(x, y, quadrant.width, quadrant.height);
+
+    return {
+        participant: {
+            participantId: participantId,
+            x: `${Math.floor(xPos / devicePixelRatio)}px`,
+            y: `${Math.floor(yPos / devicePixelRatio)}px`,
+            width: w,
+            height: h,
+            zIndex: idx,
+        },
+        img: {
+            imageData,
+            x: `${Math.floor(x / devicePixelRatio)}px`,
+            y: `${Math.floor(y / devicePixelRatio)}px`,
+            zIndex: idx + 1,
+        },
+    };
+}
 /**
  * Draw 4 quadrants filling the entire screen and rety
  * @param {CanvasRenderingContext2D} ctx - canvas 2d context
@@ -318,9 +435,25 @@ export async function drawQuadrant({ idx, ctx, text, participantId }) {
  * @return {Promise<*[Object]>} - data for drawing to Zoom
  */
 export async function draw({ ctx, participants, fill, text }) {
+    console.log(text);
     const data = [];
-
-    for (let idx = 0; idx < 4; idx++) {
+    switch (participants.length) {
+        case 1: {
+            const participantId = participants[0];
+            const idx = 0;
+            const d = await drawOneParticipant({
+                ctx,
+                idx,
+                participantId,
+                fill,
+            });
+            if (d) data.push(d);
+            break;
+        }
+        default:
+            break;
+    }
+    /*for (let idx = 0; idx < 4; idx++) {
         const participantId = participants[idx];
 
         const d = await drawQuadrant({
@@ -332,7 +465,7 @@ export async function draw({ ctx, participants, fill, text }) {
         });
 
         if (d) data.push(d);
-    }
+    }*/
 
     return data;
 }
