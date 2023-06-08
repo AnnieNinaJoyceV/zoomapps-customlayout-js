@@ -131,6 +131,7 @@ async function render() {
         ctx,
         participants: settings.cast,
         text: settings.topic,
+        allParticipants: app.participants,
     });
 
     // then we save our quadrants to Zoom at the correct zIndexes
@@ -375,7 +376,7 @@ app.sdk.onMeeting(({ action }) => {
 app.sdk.onParticipantChange(async ({ participants }) => {
     for (const part of participants) {
         const p = {
-            participantId: part.participantId.toString(),
+            participantId: part.participantUUID,
             screenName: part.screenName,
             role: part.role,
         };

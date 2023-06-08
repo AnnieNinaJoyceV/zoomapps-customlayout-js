@@ -323,10 +323,16 @@ function drawGradientText(ctx, text, x, y, maxWidth, height, padding = 12) {
     // ctx.save();
     ctx.font = `${lineHeight}px ${newFont}`;
     const tWidth = ctx.measureText(text).width;
-    var pos = { x: x + (maxWidth - tWidth) / 2, y: y + (height - lineHeight) };
+    var pos = {
+        x: x + (maxWidth - tWidth) / 2,
+        y: y + (height - lineHeight) / 2,
+    };
     ctx.fillStyle = '#FFF';
-    ctx.textAlign = 'center';
     ctx.fillText(text, pos.x, pos.y);
+
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(pos.x, pos.y, tWidth, lineHeight);
     // ctx.restore();
 }
 
@@ -342,7 +348,7 @@ function clipRoundRectTransparent(ctx, x, y, width, height, radius) {
     ctx.restore();
 }
 
-async function drawOneParticipant({ idx, ctx, participantId }) {
+async function drawOneParticipant({ idx, ctx, participantId, name }) {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
@@ -405,7 +411,7 @@ async function drawOneParticipant({ idx, ctx, participantId }) {
     drawNameCard(ctx, nameX, nameY, nameW, nameH);
 
     // draw name
-    drawGradientText(ctx, 'Make it dynamic', nameX, nameY, nameW, nameH);
+    drawGradientText(ctx, name, nameX, nameY, nameW, nameH);
 
     const imageData = ctx.getImageData(x, y, quadrant.width, quadrant.height);
 
@@ -434,18 +440,23 @@ async function drawOneParticipant({ idx, ctx, participantId }) {
  * @param {String} text - text to draw for the last quadrant
  * @return {Promise<*[Object]>} - data for drawing to Zoom
  */
-export async function draw({ ctx, participants, fill, text }) {
+export async function draw({ ctx, participants, text, allParticipants }) {
     console.log(text);
     const data = [];
     switch (participants.length) {
         case 1: {
-            const participantId = participants[0];
+            const pId = participants[0];
             const idx = 0;
+            const i =
+                allParticipants.findIndex(
+                    ({ participantId }) => participantId === pId
+                ) ?? 0;
+            const name = allParticipants[i].screenName ?? 'undefined';
             const d = await drawOneParticipant({
                 ctx,
                 idx,
-                participantId,
-                fill,
+                pId,
+                name,
             });
             if (d) data.push(d);
             break;
